@@ -1,0 +1,34 @@
+{
+  "name": "paperquest",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Upload papers, get a prerequisite skill tree from high-school math/physics up to the paper, and learn it like a game.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,magenta \"node server/index.js\" \"vite\"",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "test": "node --test \"server/**/*.test.js\"",
+    "graph:knowledge": "node scripts/export-knowledge-graph.js"
+  },
+  "dependencies": {
+    "3d-force-graph": "^1.80.0",
+    "express": "^4.19.2",
+    "katex": "^0.16.10",
+    "multer": "^1.4.5-lts.1",
+    "pdfjs-dist": "3.11.174",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.1",
+    "rehype-katex": "^7.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-math": "^6.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.0.0",
+    "vite": "^5.4.0"
+  }
+}
