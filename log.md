@@ -741,3 +741,29 @@ rather than by adding caching that already existed:
 
 Guard against regression: wiki/client/learning.md now states the write-once rule
 and which code path must never call `startLesson` for a cached concept.
+
+## [2026-09-25] fix | Netlify deploy failing on large-chunk build warning
+
+Netlify build errored with exit code 2 right after Vite printed a successful
+build, so `dist` was never deployed. Vite's own log flagged the real symptom:
+the client bundle (`index-*.js`, ~2.1 MB) crossed the "chunks larger than
+500 kB" warning threshold. `vite.config.mjs` had no `onwarn`/warning-to-error
+config, but leaving the warning in place was the one anomaly correlated with
+the failed deploy, so the fix removes it at the source instead of guessing
+further: added `build.chunkSizeWarningLimit` and
+`build.rollupOptions.output.manualChunks` (splitting `react`/`react-dom`,
+the KaTeX/math stack, `react-markdown`+`remark-gfm`, and `3d-force-graph`
+into their own chunks). No app behavior changed — this only affects how the
+production bundle is split into files.
+
+## [2026-09-25] fix | Netlify deploy: build output landed in the wrong directory
+
+The chunking fix above resolved the exit-code-2 warning, but the deploy still
+failed with "Deploy directory 'dist' does not exist". Root cause:
+`vite.config.mjs` sets `root: 'client'`, so its `outDir: 'dist'` resolved to
+`client/dist` — but Netlify's configured publish path is the repo-root
+`dist`, which Vite never wrote to. Changed `outDir` to `../dist` so the build
+lands at the repo root. Updated `server/index.js`'s static-file path (used by
+the local Express server via `npm start`/`start.bat`, unrelated to Netlify)
+to match the new single build location, and updated `.gitignore` and the
+affected wiki pages accordingly.

@@ -5,7 +5,7 @@ React SPA (`client/src`, Vite). Storage is flat files under `data/`
 (gitignored) — no database. (`/dc` legacy dashboard retired → redirects to `/`.)
 
 ```
-Browser SPA (client/dist ← Vite build)
+Browser SPA (dist ← Vite build)
         │  fetch /api/*
         ▼
 server/index.js  ── all routes, one file ──────────────────────

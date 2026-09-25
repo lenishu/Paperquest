@@ -5,8 +5,19 @@ export default defineConfig({
   root: 'client',
   plugins: [react()],
   build: {
-    outDir: 'dist',
-    emptyOutDir: true
+    outDir: '../dist',
+    emptyOutDir: true,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          katex: ['katex', 'rehype-katex', 'remark-math'],
+          markdown: ['react-markdown', 'remark-gfm'],
+          'force-graph': ['3d-force-graph']
+        }
+      }
+    }
   },
   server: {
     port: 5173,
