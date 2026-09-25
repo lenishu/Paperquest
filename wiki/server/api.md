@@ -2,7 +2,7 @@
 
 One file, all routes, mounted helpers at top. Async handlers are wrapped with
 `wrap()` (promise → `next(err)`); throw `httpError(status, msg)` (from `llm.js`)
-for clean 4xx/5xx. Static: serves `dist` (repo-root Vite build output) with SPA fallback; `GET /dc` redirects to `/` (legacy dashboard retired, HTML kept in `archive/`).
+for clean 4xx/5xx. Static: serves `client/dist` (Vite build output) with SPA fallback; `GET /dc` redirects to `/` (legacy dashboard retired, HTML kept in `archive/`).
 
 ## Route groups (all under /api)
 

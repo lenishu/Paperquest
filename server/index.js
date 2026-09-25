@@ -1302,7 +1302,7 @@ app.get('/dc', (req, res) => res.redirect('/')); // legacy dashboard retired (ar
 
 // ---------------- static (production build) ----------------
 
-const DIST = path.join(__dirname, '..', 'dist');
+const DIST = path.join(__dirname, '..', 'client', 'dist');
 if (fs.existsSync(DIST)) {
   app.use(express.static(DIST));
   app.get(/^\/(?!api\/).*/, (req, res) => res.sendFile(path.join(DIST, 'index.html')));
