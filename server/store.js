@@ -3,8 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const PROJECTS_DIR = path.join(DATA_DIR, 'projects');
+const { dataDir, segment } = require('./workspace');
+const projectsDir = () => path.join(dataDir(), 'projects');
 const SCHEMA_VERSION = 1;
 
 function ensureDir(dir) {
@@ -12,8 +12,8 @@ function ensureDir(dir) {
 }
 
 function init() {
-  ensureDir(DATA_DIR);
-  ensureDir(PROJECTS_DIR);
+  ensureDir(dataDir());
+  ensureDir(projectsDir());
 }
 
 function readJSON(file, fallback) {
@@ -57,9 +57,9 @@ function id() {
   return crypto.randomBytes(6).toString('hex');
 }
 
-const SETTINGS_FILE = () => path.join(DATA_DIR, 'settings.json');
-const PROFILE_FILE = () => path.join(DATA_DIR, 'profile.json');
-const MASTERY_FILE = () => path.join(DATA_DIR, 'mastery.json');
+const SETTINGS_FILE = () => path.join(dataDir(), 'settings.json');
+const PROFILE_FILE = () => path.join(dataDir(), 'profile.json');
+const MASTERY_FILE = () => path.join(dataDir(), 'mastery.json');
 
 // Provider registry — shared by the server (llm dispatch: `kind` + `baseUrl`)
 // and the client (Settings UI: name/keyHint/getKey). OpenAI-compatible vendors
@@ -151,7 +151,7 @@ function saveProfile(p) { writeJSON(PROFILE_FILE(), p); }
 function getMastery() { return readJSON(MASTERY_FILE(), {}); }
 function saveMastery(m) { writeJSON(MASTERY_FILE(), m); }
 
-function projectDir(pid) { return path.join(PROJECTS_DIR, pid); }
+function projectDir(pid) { return path.join(projectsDir(), segment(pid)); }
 function projectFile(pid) { return path.join(projectDir(pid), 'project.json'); }
 function papersDir(pid) { return path.join(projectDir(pid), 'papers'); }
 function lessonsDir(pid) { return path.join(projectDir(pid), 'lessons'); }
@@ -161,8 +161,8 @@ function memoryFile(pid) { return path.join(projectDir(pid), 'project.md'); }
 function snapshotFile(pid) { return path.join(projectDir(pid), 'nodes.prev.json'); }
 
 function listProjectIds() {
-  if (!fs.existsSync(PROJECTS_DIR)) return [];
-  return fs.readdirSync(PROJECTS_DIR, { withFileTypes: true })
+  if (!fs.existsSync(projectsDir())) return [];
+  return fs.readdirSync(projectsDir(), { withFileTypes: true })
     .filter((d) => d.isDirectory() && fs.existsSync(projectFile(d.name)))
     .map((d) => d.name);
 }
@@ -233,15 +233,15 @@ function deleteProject(pid) {
 function savePaperFiles(pid, paperId, originalName, buffer, markdown) {
   ensureDir(papersDir(pid));
   const ext = path.extname(originalName || '').toLowerCase() || '.bin';
-  const rawPath = path.join(papersDir(pid), paperId + ext);
-  const mdPath = path.join(papersDir(pid), paperId + '.md');
+  const rawPath = path.join(papersDir(pid), segment(paperId) + ext);
+  const mdPath = path.join(papersDir(pid), segment(paperId) + '.md');
   if (ext !== '.md') fs.writeFileSync(rawPath, buffer);
   fs.writeFileSync(mdPath, markdown, 'utf8');
   return { rawPath, mdPath };
 }
 
 function readPaperMarkdown(pid, paperId) {
-  const mdPath = path.join(papersDir(pid), paperId + '.md');
+  const mdPath = path.join(papersDir(pid), segment(paperId) + '.md');
   if (!fs.existsSync(mdPath)) return null;
   return fs.readFileSync(mdPath, 'utf8');
 }
@@ -254,8 +254,8 @@ function deletePaperFiles(pid, paperId) {
   }
 }
 
-function readLesson(pid, conceptId) { return readJSON(path.join(lessonsDir(pid), conceptId + '.json'), null); }
-function saveLesson(pid, conceptId, lesson) { writeJSON(path.join(lessonsDir(pid), conceptId + '.json'), lesson); }
+function readLesson(pid, conceptId) { return readJSON(path.join(lessonsDir(pid), segment(conceptId) + '.json'), null); }
+function saveLesson(pid, conceptId, lesson) { writeJSON(path.join(lessonsDir(pid), segment(conceptId) + '.json'), lesson); }
 
 // Which concepts already have a lesson on disk: { conceptId: savedAtMs }. Stats
 // only (no JSON parsing) — the UI uses it to show "saved" and skip the AI path.
@@ -274,7 +274,7 @@ function listLessons(pid) {
 // wipes the learner's questions. Entries:
 // { id, ts, mode:'ask'|'source', raw, question (model's paraphrase), answer, sources[], reasoningDetails }
 const MAX_CHAT_TURNS = 40;
-function lessonChatPath(pid, conceptId) { return path.join(lessonsDir(pid), conceptId + '.chat.json'); }
+function lessonChatPath(pid, conceptId) { return path.join(lessonsDir(pid), segment(conceptId) + '.chat.json'); }
 function readLessonChat(pid, conceptId) {
   const c = readJSON(lessonChatPath(pid, conceptId), null);
   return Array.isArray(c) ? c : [];
@@ -327,7 +327,7 @@ function writeNodeNote(pid, nodeId, text) {
 }
 
 // ---------- bookmarks (global "to review" list) ----------
-const BOOKMARKS_FILE = () => path.join(DATA_DIR, 'bookmarks.json');
+const BOOKMARKS_FILE = () => path.join(dataDir(), 'bookmarks.json');
 function getBookmarks() { return readJSON(BOOKMARKS_FILE(), {}); }
 function saveBookmarks(b) { writeJSON(BOOKMARKS_FILE(), b); }
 
@@ -343,14 +343,14 @@ function paperRawPath(pid, paperId) {
 
 // ---------------- careers ----------------
 
-const CAREERS_DIR = path.join(DATA_DIR, 'careers');
-const careerDir = (cid) => path.join(CAREERS_DIR, cid);
+const careersDir = () => path.join(dataDir(), 'careers');
+const careerDir = (cid) => path.join(careersDir(), segment(cid));
 const careerFile = (cid) => path.join(careerDir(cid), 'career.json');
 
 function listCareers() {
-  ensureDir(CAREERS_DIR);
+  ensureDir(careersDir());
   return fs
-    .readdirSync(CAREERS_DIR, { withFileTypes: true })
+    .readdirSync(careersDir(), { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => readJSON(careerFile(d.name), null))
     .filter(Boolean)
@@ -398,7 +398,7 @@ function careerResumeRawPath(cid) {
 
 function saveJdMarkdown(cid, jdId, markdown) {
   ensureDir(path.join(careerDir(cid), 'jds'));
-  fs.writeFileSync(path.join(careerDir(cid), 'jds', jdId + '.md'), markdown, 'utf8');
+  fs.writeFileSync(path.join(careerDir(cid), 'jds', segment(jdId) + '.md'), markdown, 'utf8');
 }
 
 module.exports = {

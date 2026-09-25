@@ -1,7 +1,7 @@
 // PDF -> Markdown. Default converter: docling (Python, high quality: tables,
 // equations, reading order). Falls back to a pdf.js text extractor if docling
 // isn't installed, so the app still works out of the box.
-const pdfjs = require('pdfjs-dist/legacy/build/pdf.js');
+const loadPdfjs = () => import('pdfjs-dist/legacy/build/pdf.mjs');
 const { execFile } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -18,6 +18,7 @@ function execFileP(cmd, args, opts) {
 
 let doclingChecked = null;
 async function hasDocling() {
+  if (process.env.NETLIFY) return false;
   if (doclingChecked !== null) return doclingChecked;
   try { await execFileP('docling', ['--version'], { timeout: 15000 }); doclingChecked = true; }
   catch { doclingChecked = false; }
@@ -43,46 +44,52 @@ async function doclingConvert(buffer) {
 }
 
 async function pageCount(buffer) {
+  let loading;
   try {
-    const doc = await pdfjs.getDocument({ data: new Uint8Array(buffer), useSystemFonts: true, disableFontFace: true, isEvalSupported: false }).promise;
+    const pdfjs = await loadPdfjs();
+    loading = pdfjs.getDocument({ data: new Uint8Array(buffer), useSystemFonts: true, disableFontFace: true, isEvalSupported: false });
+    const doc = await loading.promise;
     const n = doc.numPages;
-    await doc.destroy();
     return n;
   } catch { return 0; }
+  finally { if (loading) await loading.destroy(); }
 }
 
 // ---------------- pdf.js fallback extractor ----------------
 
 async function extractText(buffer) {
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(buffer), useSystemFonts: true, disableFontFace: true, isEvalSupported: false }).promise;
-  const pages = [];
-  for (let p = 1; p <= doc.numPages; p++) {
-    const page = await doc.getPage(p);
-    const tc = await page.getTextContent();
-    const lines = [];
-    let cur = '';
-    let lastY = null;
-    for (const it of tc.items) {
-      if (typeof it.str !== 'string') continue;
-      const y = it.transform ? it.transform[5] : 0;
-      if (lastY !== null && Math.abs(y - lastY) > 2.5) {
-        if (cur.trim()) lines.push(cur);
-        cur = it.str;
-      } else {
-        const needSpace = cur && !cur.endsWith(' ') && it.str && !it.str.startsWith(' ');
-        cur += (needSpace ? ' ' : '') + it.str;
+  const pdfjs = await loadPdfjs();
+  const loading = pdfjs.getDocument({ data: new Uint8Array(buffer), useSystemFonts: true, disableFontFace: true, isEvalSupported: false });
+  try {
+    const doc = await loading.promise;
+    const pages = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      const page = await doc.getPage(p);
+      const tc = await page.getTextContent();
+      const lines = [];
+      let cur = '';
+      let lastY = null;
+      for (const it of tc.items) {
+        if (typeof it.str !== 'string') continue;
+        const y = it.transform ? it.transform[5] : 0;
+        if (lastY !== null && Math.abs(y - lastY) > 2.5) {
+          if (cur.trim()) lines.push(cur);
+          cur = it.str;
+        } else {
+          const needSpace = cur && !cur.endsWith(' ') && it.str && !it.str.startsWith(' ');
+          cur += (needSpace ? ' ' : '') + it.str;
+        }
+        lastY = y;
       }
-      lastY = y;
+      if (cur.trim()) lines.push(cur);
+      pages.push(lines.join('\n'));
+      page.cleanup();
     }
-    if (cur.trim()) lines.push(cur);
-    pages.push(lines.join('\n'));
-    page.cleanup();
-  }
-  let info = null;
-  try { info = (await doc.getMetadata()).info || null; } catch {}
-  const numPages = doc.numPages;
-  await doc.destroy();
-  return { text: pages.join('\n\n'), numPages, info };
+    let info = null;
+    try { info = (await doc.getMetadata()).info || null; } catch {}
+    const numPages = doc.numPages;
+    return { text: pages.join('\n\n'), numPages, info };
+  } finally { await loading.destroy(); }
 }
 
 const SECTION_WORDS = /^(abstract|introduction|background|related work|methods?|methodology|results?|discussion|conclusions?|references|acknowledg(e)?ments|appendix|preliminaries|experiments?|evaluation|limitations|future work)\b/i;

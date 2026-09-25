@@ -1,3 +1,4 @@
+import { isCloud } from '../api';
 import React from 'react';
 import { ACCENT_HUES } from '../graphLayout';
 
@@ -16,7 +17,7 @@ export default function Sidebar({ dash, onUpload, onNewProject, onExplore, onDai
       <div className="side-prof">
         <div className="side-avatar">L</div>
         <div className="side-prof-text">
-          <div className="side-name">Lenish</div>
+          <div className="side-name">{isCloud ? 'Learner' : 'Lenish'}</div>
           <div className="side-role">{p.title || 'Novice'}</div>
           <div className="side-level">Level {p.level || 0}</div>
         </div>

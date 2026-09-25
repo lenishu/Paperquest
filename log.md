@@ -741,3 +741,9 @@ rather than by adding caching that already existed:
 
 Guard against regression: wiki/client/learning.md now states the write-once rule
 and which code path must never call `startLesson` for a cached concept.
+
+## [2026-09-25] feat | Full app deployment on Netlify Free
+
+Committed the existing lesson Q&A, saved-lesson controls, and provider snippets as lenishu. Added a Netlify adapter with encrypted private workspaces, recovery keys, persistent Blobs snapshots, conditional writes, and background AI/upload/reference jobs. The local file-based app remains available. Hosted uploads are 4 MB with 24 MB workspace storage; custom AI origins require owner configuration. Upgraded PDF.js for public upload handling and added cloud integration tests. Deployment outcome is recorded after live verification.
+
+Validation: all 11 tests pass, including isolated workspace persistence, CAS conflict handling, background task ownership and idempotency, Markdown and PDF uploads, original PDF downloads, and cached lessons. The production dependency audit reports zero vulnerabilities. Netlify offline build bundles both functions successfully; browser QA confirms the demo, saved lesson, and private-workspace settings. Public deployment is pending Netlify account access.

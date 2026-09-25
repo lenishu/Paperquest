@@ -19,6 +19,11 @@ internal `setSel` surviving a tab switch.
 **Change here when:** adding an externally linkable target.
 
 ## Data loading
+Hosted builds (`VITE_CLOUD=true`) first establish a private workspace cookie
+through `/api/session`. `api.js` polls 202 background jobs transparently and
+checks the 4 MB upload limit. `WorkspaceSettings.jsx` in Settings exposes the
+recovery-key and workspace-switching controls; see [hosting.md](../hosting.md).
+
 `api.js` is the only fetch helper. App loads `GET /api/dashboard` (→ `dash`,
 passed everywhere) and `GET /api/projects` (→ `projects`). `refreshAll` after
 mutations. `ProjectView` fetches its own `GET /api/projects/:id` and refetches

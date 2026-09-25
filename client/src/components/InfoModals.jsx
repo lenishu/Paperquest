@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../api';
+import { api, isCloud } from '../api';
 import { Modal, useToast } from './bits';
 import { branchColor } from '../graphLayout';
 
@@ -55,7 +55,7 @@ export function AboutModal({ onClose }) {
       <div className="prose">
         <p>Drop any research paper into a project. PaperQuest converts it to Markdown, identifies the concepts it stands on, and grows a <b>prerequisite skill map</b> rooted in high-school math &amp; physics.</p>
         <p>You learn bottom-up: pass a short quiz on a concept to unlock the branches that build on it, until you reach the paper's core idea — explained using everything you just learned.</p>
-        <p>Everything is stored locally in the <code>data/</code> folder. Your API key never leaves your machine except to the provider you chose.</p>
+        <p>{isCloud ? "Your papers, progress and API keys are saved in your private encrypted workspace on Netlify. Save the recovery key in Settings to keep access across devices. AI requests are sent to your chosen provider." : <>Everything is stored locally in the <code>data/</code> folder. Your API key never leaves your machine except to the provider you chose.</>}</p>
       </div>
     </Modal>
   );

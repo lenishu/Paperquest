@@ -5,10 +5,18 @@ const store = require('./store');
 const TIMEOUT_MS = 240000;
 
 async function timedFetch(url, opts) {
+  if (process.env.NETLIFY) {
+    const target = new URL(url);
+    const allowed = new Set(Object.values(store.PROVIDERS).filter((p) => p.baseUrl).map((p) => new URL(p.baseUrl).origin));
+    for (const origin of (process.env.PAPERQUEST_ALLOWED_AI_ORIGINS || '').split(',').filter(Boolean)) allowed.add(origin.trim());
+    if (target.protocol !== 'https:' || !allowed.has(target.origin) || target.username || target.password) {
+      throw httpError(400, 'This AI endpoint is not enabled on the hosted app. Choose a listed provider or ask the site owner to enable its HTTPS origin.');
+    }
+  }
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    return await fetch(url, { ...opts, signal: ctrl.signal });
+    return await fetch(url, { ...opts, redirect: process.env.NETLIFY ? 'error' : 'follow', signal: ctrl.signal });
   } finally {
     clearTimeout(t);
   }

@@ -11,7 +11,7 @@ const { pdfToMarkdown } = require('./pdfToMd');
 const { resolveReferences, expandPaper, MODES } = require('./references');
 const { DEMO_NODES, DEMO_PAPER_MD, DEMO_LESSON_LINEAR_ALGEBRA } = require('./demo');
 
-store.init();
+if (!process.env.NETLIFY) store.init();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -20,7 +20,7 @@ app.use(express.json({ limit: '10mb' }));
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 80 * 1024 * 1024 }
+  limits: { fileSize: (process.env.NETLIFY ? 4 : 80) * 1024 * 1024 }
 });
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -1317,8 +1317,10 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: msg });
 });
 
-app.listen(PORT, () => {
+if (require.main === module) app.listen(PORT, () => {
   console.log(`PaperQuest API on http://localhost:${PORT}`);
   if (fs.existsSync(DIST)) console.log(`Serving built app at http://localhost:${PORT}`);
   else console.log('Dev mode: run the web app via "npm run dev" and open http://localhost:5173');
 });
+
+module.exports = app;
