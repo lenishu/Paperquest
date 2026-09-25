@@ -245,3 +245,7 @@ as paper analysis and lessons. Details: [wiki/career.md](wiki/career.md).
 | Search, navigation, project memory, undo, export | 🟦 Local tool | file reads/writes only |
 
 **Rule of thumb:** AI is used exactly where judgment about *content* is needed (what math a paper stands on, how to teach a concept). Every *mechanic* — scoring, unlocking, progress, gamification, rendering — is ordinary local code, so it's fast, free, and reproducible.
+
+## Netlify hosting
+
+The hosted build uses Netlify Functions plus private encrypted workspace snapshots in Netlify Blobs. Slow AI, uploads, and reference lookups run as background jobs. Recovery-key cookies identify workspaces; local data is not deployed. See `wiki/hosting.md` for limits, concurrency, and recovery behavior.

@@ -60,3 +60,6 @@ No auth (single-user localhost). Secrets = provider API keys in `data/settings.j
 
 ## Recommended hardening (not yet done)
 Unit tests for `graphUtil` (sanitize/repair/states); ESLint + Prettier; a smoke test for the API; split `server/index.js` into `routes/`; TypeScript for shared node/graph types. Ask before large refactors — parallel edits happen in this repo.
+
+## Hosted deployment
+Netlify support is documented in `wiki/hosting.md`. Hosted builds have private recovery-key workspaces, encrypted Netlify Blobs persistence, and background jobs. The local app keeps its file-based behavior. Node 22.13+ is required. Never deploy local `data/`; never serve the local unauthenticated Express process publicly.

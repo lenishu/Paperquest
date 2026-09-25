@@ -68,3 +68,5 @@ App so the map remounts with the concept preselected).
 **Change here when:** quiz behavior, XP amounts (server `xpForNode`), lesson
 rendering, job progress UX. Lesson *content* quality → `server/prompts.js`
 (`lessonMessages`).
+
+Hosted builds store saved lessons in the encrypted workspace; the UI uses storage-neutral wording. Cached lessons bypass background jobs as well as AI. See `../hosting.md`.

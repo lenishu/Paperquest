@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { api } from '../api';
+import { api, isCloud } from '../api';
+import WorkspaceSettings from './WorkspaceSettings';
 import { Modal, Spinner, useToast } from './bits';
 import { parseSnippet, renderSnippet, SNIPPET_LANGS } from '../snippet';
 
@@ -80,11 +81,12 @@ export default function SettingsModal({ onClose }) {
       </div>
 
       <div className="settings-body">
+        {isCloud && <WorkspaceSettings />}
         <label className="field-label">AI connections</label>
         <p className="dim small" style={{ marginTop: 0 }}>
           Add one or more providers (OpenAI, Anthropic, Gemini, OpenRouter, Groq, Zhipu GLM, or any OpenAI-compatible
           endpoint). Keep several — even from the same provider — and pick which one is <b>active</b> for
-          analysis &amp; lessons. Keys live only in <code>data/settings.json</code> on this machine.
+          analysis &amp; lessons. {isCloud ? 'Keys are encrypted in your private workspace and sent to the provider when you use AI.' : <>Keys live only in <code>data/settings.json</code> on this machine.</>}
         </p>
 
         {s.connections.length === 0 && (

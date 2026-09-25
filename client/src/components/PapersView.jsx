@@ -51,7 +51,7 @@ export default function PapersView({ id, project, onReload, refreshProjects, onR
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}>
         {project.papers.length === 0 && (
-          <div className="pv-drop">Drop a PDF or Markdown file here — it's parsed locally, then mapped by AI in the background.</div>
+          <div className="pv-drop">Drop a PDF or Markdown file here — its text is extracted, then mapped by AI in the background.</div>
         )}
         {project.papers.map((p) => (
           <div key={p.id} className="pv-card">

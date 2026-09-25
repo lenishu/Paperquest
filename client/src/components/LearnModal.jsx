@@ -118,7 +118,7 @@ export default function LearnModal({ projectId, node, isMastered, onClose, onCom
         <div className="learn-loading">
           <div className="spinner" />
           <div className="spinner-label">{LOADING_LINES[loadingLine]}</div>
-          <div className="dim small">Written once, then saved to disk — every time after this it opens instantly, free.</div>
+          <div className="dim small">Written once, then saved — every time after this it opens instantly, free.</div>
         </div>
       )}
 
@@ -136,7 +136,7 @@ export default function LearnModal({ projectId, node, isMastered, onClose, onCom
         <div className="learn-body">
           {data.cached && (
             <div className="lesson-saved dim small">
-              📖 Your saved copy — written once and kept on disk, so reopening it never calls the model.
+              📖 Your saved copy — written once and kept for you, so reopening it never calls the model.
               Use 🔁 Regenerate only if you want a different one.
             </div>
           )}

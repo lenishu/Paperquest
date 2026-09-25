@@ -1,3 +1,4 @@
+import { isCloud } from '../api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Logo from './Logo';
 import { branchColor } from '../graphLayout';
@@ -170,7 +171,7 @@ export default function TopBar({ view, onNav, project, tab, onTab, dash, onOpenC
           <button className="tb-prof-btn" onClick={() => setMenuOpen((v) => !v)}>
             <span className="tb-avatar">L</span>
             <span className="tb-prof-text">
-              <span className="tb-prof-name">Lenish</span>
+              <span className="tb-prof-name">{isCloud ? 'Learner' : 'Lenish'}</span>
               <span className="tb-prof-role">{p.title || 'Novice'} · Level {p.level || 0}</span>
             </span>
             <span className="tb-caret">▾</span>

@@ -5,6 +5,10 @@ through `writeJSON` — it is atomic (temp file + fsync + rename). Non-atomic
 writes corrupted `project.json` in the past; never reintroduce them.
 `readJSON` tolerates trailing garbage from historic corruption.
 
+On Netlify, `workspace.dataDir()` selects a request-local temporary directory.
+`cloud.js` hydrates/persists encrypted snapshots in Netlify Blobs; the local
+`data/` directory is never used or deployed. See [hosting.md](../hosting.md).
+
 ## data/ layout
 ```
 data/
