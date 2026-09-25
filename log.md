@@ -656,3 +656,88 @@ colour literals in `Dashboard`/`BrainMap`/`Galaxy3D`/`KnowledgeGraph`, the branc
 palette design question, graph state conveyed by colour alone, and `CareerView`
 rolling its own modal instead of using the now-accessible `Modal`.
 Docs: DESIGN_SYSTEM.md, wiki/client/design.md, design-handout/{AUDIT,COMPONENTS}.md.
+
+## [2026-09-06] feature | OpenRouter provider (with reasoning) + code-snippet setup in Settings
+
+**Provider.** Added `openrouter` to `store.PROVIDERS` — a new llm.js *kind*
+rather than a reskinned `openai` one, because OpenRouter's two useful extras
+don't fit the OpenAI shape:
+- `reasoning: {enabled, effort}` on the request, and
+- `reasoning_details` on the assistant message, which must be passed **back
+  unmodified** on the next turn for the model to resume its own thinking.
+
+A connection therefore grew two fields (`reasoning`, `reasoningEffort`) and
+`llm.js` grew `callLLMRaw`, which returns `{text, message}` instead of just
+text — the only way a caller can get `reasoning_details` back out. `callLLM`
+stays as the text-only wrapper, so every existing call site is untouched. Like
+the openai kind, the openrouter kind retries once without `response_format` /
+`reasoning` if the model rejects them (common on the `:free` models).
+
+**Two ways to configure, per the request.** Settings keeps the form, and adds a
+**Set up with code** panel per connection: paste the vendor's request snippet
+(Python / JavaScript / cURL) and `parseSnippet` pulls out provider, base URL,
+model, key and the reasoning block; the same panel renders the request
+PaperQuest will actually send, in all three languages, with a Copy button. Both
+directions live in the new `client/src/snippet.js` — deliberately client-side
+and network-free, so a pasted key never round-trips through the server.
+Placeholders (`<OPENROUTER_API_KEY>`, `YOUR_KEY`, bare SCREAMING_CASE) are
+recognised and skipped rather than saved as a key.
+
+## [2026-09-06] feature | Ask-a-question thread inside an open refresher
+
+`LearnModal` now ends with `LessonChat` — free-text **Ask** plus **📚 Ask for
+sources**. Design decisions worth keeping:
+
+- **The thread is the response.** `POST /projects/:id/lesson/ask` always returns
+  the *whole* thread, not just the new turn, so the client never reconstructs
+  state and reopening the modal shows the full history.
+- **Separate file.** The thread lives in `lessons/<conceptId>.chat.json`, not
+  inside the lesson JSON, so **Regenerate** replaces the lesson without
+  destroying the learner's questions. Capped at 40 turns.
+- **The paraphrase is the index.** The model returns
+  `{question, answer, sources}` where `question` is its own one-sentence
+  restatement of what was asked; that paraphrase is what gets highlighted at the
+  top of each turn (the raw text is kept underneath in small italics when it
+  differs). A twenty-turn thread stays skimmable because every turn is headed by
+  a clean sentence rather than the learner's shorthand.
+- **Prior turns are replayed as real messages**, with `reasoningDetails` attached
+  to the assistant side — so on an OpenRouter reasoning model, answer 5 continues
+  the thinking from answers 1-4. That is the concrete payoff of the provider work
+  above.
+- **Inline, not a background job.** `jobs.jsx` owns lesson/analyze because those
+  are slow and the user walks away; a question inside an open modal is a
+  foreground conversation, so it keeps its own spinner and retry. Noted as an
+  explicit exception in `wiki/client/learning.md`.
+
+Sources are prompted as "real, canonical works only — never invent a title,
+author or DOI", since a fabricated citation is worse than none in a study tool.
+
+Verified end-to-end against a live provider: both modes, persistence across
+reopen, KaTeX in answers, and the snippet round-trip in the Settings UI.
+
+## [2026-09-06] fix | Saved lessons made visible — "Open saved refresher", no job, no accidental regeneration
+
+Report: "every time we click start refresher it uses AI to create notes."
+Checked first: it doesn't. `POST /projects/:id/lesson` has always been
+cache-first, and two consecutive calls returned `cached: true` with the original
+`generatedAt` and an untouched file on disk. No model call, no cost.
+
+The bug was that nothing said so. A repeat click still read **Start refresher**,
+still went through `jobs.jsx`, still showed "Preparing lesson…" in the progress
+dock — indistinguishable from real generation. Fixed by making the cache legible
+rather than by adding caching that already existed:
+
+- `GET /projects/:id` now returns `lessons: {conceptId: savedAtMs}`
+  (`store.listLessons`, `stat` only — no JSON parsing), threaded through
+  ProjectView → Overview / MapView → NodePanel.
+- A concept with a saved lesson shows **📖 Open saved refresher** and opens it
+  **directly**, bypassing the job queue entirely: no dock, no spinner, no
+  "preparing". Plus a line saying it was saved N ago and reopening is free.
+- `LearnModal` shows a "your saved copy" strip whenever the response is `cached`.
+- **Regenerate** (both entry points) now confirms first. It is the only control
+  that spends tokens on a lesson, so it should be the only one that feels like it.
+- The lesson job now `bump()`s the project, so a freshly generated lesson flips
+  to "saved" immediately instead of after the next reload.
+
+Guard against regression: wiki/client/learning.md now states the write-once rule
+and which code path must never call `startLesson` for a cached concept.

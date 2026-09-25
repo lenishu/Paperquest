@@ -1,5 +1,5 @@
 // Provider-agnostic LLM adapter. Kinds: openai (OpenAI, Groq, Zhipu GLM and any
-// OpenAI-compatible endpoint), anthropic, gemini. Node 18+ (global fetch).
+// OpenAI-compatible endpoint), openrouter, anthropic, gemini. Node 18+ (global fetch).
 const store = require('./store');
 
 const TIMEOUT_MS = 240000;
@@ -27,8 +27,10 @@ async function readError(res) {
   return `${res.status} ${res.statusText}: ${msg}`;
 }
 
-// messages: [{role:'system'|'user'|'assistant', content:string}]
-async function callLLM(settings, messages, { json = true, maxTokens = 8000 } = {}) {
+// messages: [{role:'system'|'user'|'assistant', content:string, reasoning_details?}]
+// Returns { text, message } — `message` is the raw assistant message, so callers
+// continuing a thread can hand `reasoning_details` back unmodified (OpenRouter).
+async function callLLMRaw(settings, messages, { json = true, maxTokens = 8000 } = {}) {
   const conn = store.activeConnection(settings);
   if (!conn || !(conn.key || '').trim()) {
     throw httpError(400, 'No active API connection with a key. Open Settings (gear icon), add a key and mark it active.');
@@ -43,9 +45,15 @@ async function callLLM(settings, messages, { json = true, maxTokens = 8000 } = {
   if (!model) throw httpError(400, 'This connection needs a model name. Open Settings.');
 
   if (meta.kind === 'openai') return openai(key, model, messages, json, maxTokens, baseUrl, conn.provider === 'openai');
+  if (meta.kind === 'openrouter') return openrouter(key, model, messages, json, maxTokens, baseUrl, conn);
   if (meta.kind === 'anthropic') return anthropic(key, model, messages, json, maxTokens);
   if (meta.kind === 'gemini') return gemini(key, model, messages, json, maxTokens, baseUrl);
   throw httpError(400, `Unknown provider kind "${meta.kind}"`);
+}
+
+async function callLLM(settings, messages, opts) {
+  const { text } = await callLLMRaw(settings, messages, opts);
+  return text;
 }
 
 function httpError(status, message) {
@@ -60,7 +68,7 @@ function httpError(status, message) {
 async function openai(key, model, messages, json, maxTokens, baseUrl, useCompletionTokens) {
   const url = `${String(baseUrl).replace(/\/$/, '')}/chat/completions`;
   const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` };
-  const body = { model, messages };
+  const body = { model, messages: messages.map((m) => ({ role: m.role, content: m.content })) };
   if (json) body.response_format = { type: 'json_object' };
   if (useCompletionTokens) body.max_completion_tokens = maxTokens; else body.max_tokens = maxTokens;
 
@@ -86,9 +94,59 @@ async function openai(key, model, messages, json, maxTokens, baseUrl, useComplet
 
   if (!res.ok) throw httpError(502, `Provider error — ${await readError(res)}`);
   const data = await res.json();
-  const text = data.choices?.[0]?.message?.content;
+  const message = data.choices?.[0]?.message;
+  const text = message?.content;
   if (!text) throw httpError(502, 'The provider returned an empty response');
-  return text;
+  return { text, message };
+}
+
+// OpenRouter — OpenAI-shaped, plus the `reasoning` block and `reasoning_details`.
+// Assistant messages are forwarded with their `reasoning_details` UNMODIFIED so a
+// reasoning model continues thinking from where it left off across turns.
+async function openrouter(key, model, messages, json, maxTokens, baseUrl, conn) {
+  const url = `${String(baseUrl || 'https://openrouter.ai/api/v1').replace(/\/$/, '')}/chat/completions`;
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${key}`,
+    'HTTP-Referer': 'http://localhost:3001',
+    'X-Title': 'PaperQuest'
+  };
+  const body = {
+    model,
+    messages: messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      ...(m.reasoning_details ? { reasoning_details: m.reasoning_details } : {})
+    })),
+    max_tokens: maxTokens
+  };
+  if (json) body.response_format = { type: 'json_object' };
+  if (conn && conn.reasoning) {
+    body.reasoning = { enabled: true, ...(conn.reasoningEffort ? { effort: conn.reasoningEffort } : {}) };
+  }
+
+  const send = () => timedFetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+  let res = await send();
+
+  // Free/older models on OpenRouter may reject JSON mode or the reasoning block.
+  if (res.status === 400 || res.status === 404) {
+    const errText = await res.clone().text();
+    let retry = false;
+    if (/response_format|json/i.test(errText) && body.response_format) { delete body.response_format; retry = true; }
+    if (/reasoning/i.test(errText) && body.reasoning) { delete body.reasoning; retry = true; }
+    if (retry) res = await send();
+  }
+
+  if (!res.ok) throw httpError(502, `OpenRouter error — ${await readError(res)}`);
+  const data = await res.json();
+  if (data.error) throw httpError(502, `OpenRouter error — ${data.error.message || 'unknown'}`);
+  const message = data.choices?.[0]?.message;
+  const text = message?.content;
+  if (!text) {
+    const reason = data.choices?.[0]?.finish_reason || 'empty response';
+    throw httpError(502, `OpenRouter returned no text (${reason})`);
+  }
+  return { text, message };
 }
 
 async function anthropic(key, model, messages, json, maxTokens) {
@@ -119,7 +177,7 @@ async function anthropic(key, model, messages, json, maxTokens) {
     .map((b) => b.text)
     .join('');
   if (!text) throw httpError(502, 'Anthropic returned an empty response');
-  return text;
+  return { text, message: { role: 'assistant', content: text } };
 }
 
 async function gemini(key, model, messages, json, maxTokens, baseUrl) {
@@ -151,7 +209,7 @@ async function gemini(key, model, messages, json, maxTokens, baseUrl) {
     const reason = cand?.finishReason || data.promptFeedback?.blockReason || 'empty response';
     throw httpError(502, `Gemini returned no text (${reason})`);
   }
-  return text;
+  return { text, message: { role: 'assistant', content: text } };
 }
 
 // Robust JSON extraction from model output.
@@ -173,4 +231,4 @@ function parseModelJSON(text) {
   }
 }
 
-module.exports = { callLLM, parseModelJSON, httpError };
+module.exports = { callLLM, callLLMRaw, parseModelJSON, httpError };

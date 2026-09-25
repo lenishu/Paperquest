@@ -70,10 +70,13 @@ const PROVIDERS = {
   openai:    { name: 'OpenAI',             kind: 'openai',    baseUrl: 'https://api.openai.com/v1',                 defaultModel: 'gpt-4o-mini',             keyHint: 'sk-…',     getKey: 'https://platform.openai.com/api-keys' },
   groq:      { name: 'Groq',               kind: 'openai',    baseUrl: 'https://api.groq.com/openai/v1',            defaultModel: 'llama-3.3-70b-versatile', keyHint: 'gsk_…',    getKey: 'https://console.groq.com/keys' },
   glm:       { name: 'Zhipu GLM',          kind: 'openai',    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',      defaultModel: 'glm-4-flash',             keyHint: 'id.secret', getKey: 'https://open.bigmodel.cn/usercenter/apikeys' },
+  openrouter: { name: 'OpenRouter',        kind: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1',             defaultModel: 'google/gemma-4-31b-it:free', keyHint: 'sk-or-v1-…', getKey: 'https://openrouter.ai/keys', reasoning: true },
   openai_compatible: { name: 'OpenAI-compatible (custom)', kind: 'openai', baseUrl: '', defaultModel: '', keyHint: 'sk-…', getKey: '', custom: true }
 };
 
 const DEFAULT_MODELS = Object.fromEntries(Object.entries(PROVIDERS).map(([k, v]) => [k, v.defaultModel]));
+
+const REASONING_EFFORTS = ['low', 'medium', 'high'];
 
 function providerMeta(provider) { return PROVIDERS[provider] || PROVIDERS.openai; }
 
@@ -86,7 +89,10 @@ function sanitizeConnection(c) {
     label: String((c && c.label) || PROVIDERS[provider].name).slice(0, 60),
     key: String((c && c.key) || ''),
     model: String((c && c.model) || '').slice(0, 120),
-    baseUrl: String((c && c.baseUrl) || '').slice(0, 200)
+    baseUrl: String((c && c.baseUrl) || '').slice(0, 200),
+    // Reasoning ('thinking') tokens — currently honoured by the openrouter kind.
+    reasoning: !!(c && c.reasoning),
+    reasoningEffort: REASONING_EFFORTS.includes(c && c.reasoningEffort) ? c.reasoningEffort : ''
   };
 }
 
@@ -251,6 +257,39 @@ function deletePaperFiles(pid, paperId) {
 function readLesson(pid, conceptId) { return readJSON(path.join(lessonsDir(pid), conceptId + '.json'), null); }
 function saveLesson(pid, conceptId, lesson) { writeJSON(path.join(lessonsDir(pid), conceptId + '.json'), lesson); }
 
+// Which concepts already have a lesson on disk: { conceptId: savedAtMs }. Stats
+// only (no JSON parsing) — the UI uses it to show "saved" and skip the AI path.
+function listLessons(pid) {
+  const dir = lessonsDir(pid);
+  if (!fs.existsSync(dir)) return {};
+  const out = {};
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith('.json') || f.endsWith('.chat.json')) continue;
+    try { out[f.slice(0, -5)] = fs.statSync(path.join(dir, f)).mtimeMs; } catch (_) {}
+  }
+  return out;
+}
+
+// Per-lesson Q&A thread. Kept in its OWN file so regenerating the lesson never
+// wipes the learner's questions. Entries:
+// { id, ts, mode:'ask'|'source', raw, question (model's paraphrase), answer, sources[], reasoningDetails }
+const MAX_CHAT_TURNS = 40;
+function lessonChatPath(pid, conceptId) { return path.join(lessonsDir(pid), conceptId + '.chat.json'); }
+function readLessonChat(pid, conceptId) {
+  const c = readJSON(lessonChatPath(pid, conceptId), null);
+  return Array.isArray(c) ? c : [];
+}
+function saveLessonChat(pid, conceptId, chat) {
+  const trimmed = (Array.isArray(chat) ? chat : []).slice(-MAX_CHAT_TURNS);
+  ensureDir(lessonsDir(pid));
+  writeJSON(lessonChatPath(pid, conceptId), trimmed);
+  return trimmed;
+}
+function clearLessonChat(pid, conceptId) {
+  try { fs.rmSync(lessonChatPath(pid, conceptId), { force: true }); } catch (_) {}
+  return [];
+}
+
 function logEvent(pid, type, data) {
   try { appendLine(eventsFile(pid), { t: Date.now(), type, ...(data || {}) }); } catch (_) {}
 }
@@ -370,6 +409,7 @@ module.exports = {
   getProfile, saveProfile, getMastery, saveMastery,
   listProjects, getProject, saveProject, createProject, deleteProject,
   savePaperFiles, readPaperMarkdown, deletePaperFiles, readLesson, saveLesson,
+  readLessonChat, saveLessonChat, clearLessonChat, listLessons,
   logEvent, readEvents, logAudit, readAudit,
   saveNodesSnapshot, readNodesSnapshot, readMemory, writeMemory,
   readNodeNotes, writeNodeNote,

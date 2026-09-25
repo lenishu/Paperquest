@@ -21,6 +21,33 @@ GLOBAL mastery + awards XP (`xpForNode`; `skipped` variant for skip-ahead) →
 `Confetti`, toast, `refreshProfile`. Lesson JSON comes from
 `GET`-through-cache `POST /projects/:id/lesson` (see server/ai-pipeline.md).
 
+## LessonChat.jsx — follow-up Q&A under the refresher
+Rendered at the bottom of `LearnModal` (below the quiz). LearnModal owns the
+thread (`chat`, seeded from the lesson payload) and passes `chat`/`onChat`.
+Two actions: **Ask** (free text; Enter sends, Shift+Enter newlines) and
+**Ask for sources** (`mode: "source"`, works with an empty box). Each call is
+`POST /projects/:id/lesson/ask` and returns the WHOLE thread, so history
+survives closing the modal, reopening it, and regenerating the lesson (the
+thread lives in its own `lessons/<id>.chat.json`). A turn renders the model's
+**paraphrase of the question, highlighted**, the raw question underneath when
+it differs, the markdown answer, and any sources; the newest turn gets
+`.is-new` and is scrolled to. "Clear thread" DELETEs it.
+**Exception to the jobs rule below:** ask runs inline (own spinner, own retry)
+because it is a foreground conversation inside an open modal, not background work.
+
+## Lessons are written once (do not regress this)
+A lesson costs a model call the FIRST time only. The server is cache-first and
+the client is built to make that visible, so nobody pays twice:
+- `GET /projects/:id` returns `lessons: {conceptId: savedAtMs}`; ProjectView
+  threads it to `Overview` and `MapView` → `NodePanel savedAt`.
+- With a `savedAt`, NodePanel/Overview show **📖 Open saved refresher** and call
+  `onOpenLesson` DIRECTLY — no `startLesson`, no job, no "Preparing…" dock.
+  Without one they still enqueue a job (that call really does generate).
+- `LearnModal` shows a "your saved copy" strip when the response says `cached`,
+  and **Regenerate** (both entry points) confirms first — it is the only control
+  in the app that spends tokens on a lesson.
+- The lesson job `bump()`s the project so the saved marker appears immediately.
+
 ## Where learning starts
 `NodePanel` (map) and `Overview.jsx` recommendations → `startLesson` →
 LearnModal opens when `lessonState` says ready. Quests (`#quest-card` on

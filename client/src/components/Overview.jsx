@@ -75,7 +75,7 @@ function ActivityChart({ events }) {
   );
 }
 
-export default function Overview({ id, project, states, mastery, notes = {}, onOpenConcept, onOpenLesson, onOpenSettings, onGotoMap }) {
+export default function Overview({ id, project, states, mastery, notes = {}, lessons = {}, onOpenConcept, onOpenLesson, onOpenSettings, onGotoMap }) {
   const [events, setEvents] = useState([]);
   const { startLesson, lessonState } = useJobs();
 
@@ -209,6 +209,12 @@ export default function Overview({ id, project, states, mastery, notes = {}, onO
                     <button className="btn btn-primary" onClick={() => startLesson(id, nextConcept)}>↻ Retry</button>
                     <button className="btn btn-ghost" onClick={onOpenSettings}>Settings</button>
                   </div>
+                ) : lessons[nextConcept.id] ? (
+                  <>
+                    <button className="btn btn-primary" onClick={() => onOpenLesson(nextConcept)}>📖 Open saved refresher</button>
+                    <button className="btn btn-ghost" onClick={() => onOpenConcept(nextConcept.id)}>View</button>
+                    <div className="dim small np-saved">Already written and saved — reopening costs nothing.</div>
+                  </>
                 ) : ls && ls.status === 'ready' ? (
                   <>
                     <button className="btn btn-primary" onClick={() => onOpenLesson(nextConcept)}>▶ Open refresher</button>

@@ -5,8 +5,8 @@ const multer = require('multer');
 
 const store = require('./store');
 const { sanitizeGraph, computeDepths, computeStates, xpForNode, levelInfo, repairGraph, isDegenerate, effectiveTier, isAdvanced, slugify } = require('./graphUtil');
-const { callLLM, parseModelJSON, httpError } = require('./llm');
-const { conceptExtractionMessages, conceptMergeMessages, lessonMessages, careerSkillsMessages, careerJdMergeMessages, resumeSkillsMessages } = require('./prompts');
+const { callLLM, callLLMRaw, parseModelJSON, httpError } = require('./llm');
+const { conceptExtractionMessages, conceptMergeMessages, lessonMessages, lessonAskMessages, careerSkillsMessages, careerJdMergeMessages, resumeSkillsMessages } = require('./prompts');
 const { pdfToMarkdown } = require('./pdfToMd');
 const { resolveReferences, expandPaper, MODES } = require('./references');
 const { DEMO_NODES, DEMO_PAPER_MD, DEMO_LESSON_LINEAR_ALGEBRA } = require('./demo');
@@ -181,7 +181,8 @@ app.get('/api/projects/:id', (req, res) => {
   const bm = store.getBookmarks();
   const bookmarks = Object.values(bm).filter((x) => x.projectId === p.id).map((x) => x.conceptId);
   const notes = store.readNodeNotes(p.id);
-  res.json({ project: p, states, mastery, sharedWith: relevantShared, canUndo, bookmarks, notes });
+  const lessons = store.listLessons(p.id); // { conceptId: savedAtMs } — cached lessons
+  res.json({ project: p, states, mastery, sharedWith: relevantShared, canUndo, bookmarks, notes, lessons });
 });
 
 app.patch('/api/projects/:id', (req, res) => {
@@ -463,7 +464,7 @@ app.post(
 
     if (!regenerate) {
       const cached = store.readLesson(p.id, conceptId);
-      if (cached) return res.json({ ...cached, cached: true });
+      if (cached) return res.json({ ...cached, chat: store.readLessonChat(p.id, conceptId), cached: true });
     }
 
     const mastery = store.getMastery();
@@ -494,7 +495,69 @@ app.post(
     const lesson = { lesson: String(parsed.lesson), quiz: parsed.quiz, generatedAt: Date.now() };
     store.saveLesson(p.id, conceptId, lesson);
     store.logEvent(p.id, 'lesson_generated', { concept: node.name });
-    res.json({ ...lesson, cached: false });
+    res.json({ ...lesson, chat: store.readLessonChat(p.id, conceptId), cached: false });
+  })
+);
+
+app.get('/api/projects/:id/lesson/chat', (req, res) => {
+  const p = store.getProject(req.params.id);
+  if (!p) return res.status(404).json({ error: 'Project not found' });
+  const conceptId = String(req.query.conceptId || '');
+  res.json({ chat: store.readLessonChat(p.id, conceptId) });
+});
+
+app.delete('/api/projects/:id/lesson/chat', (req, res) => {
+  const p = store.getProject(req.params.id);
+  if (!p) return res.status(404).json({ error: 'Project not found' });
+  const conceptId = String(req.query.conceptId || '');
+  res.json({ chat: store.clearLessonChat(p.id, conceptId) });
+});
+
+// Follow-up Q&A inside an open refresher. Always returns the WHOLE thread so the
+// modal can render history and the new answer from one response.
+app.post(
+  '/api/projects/:id/lesson/ask',
+  wrap(async (req, res) => {
+    const { conceptId, question, mode } = req.body || {};
+    const p = store.getProject(req.params.id);
+    if (!p) throw httpError(404, 'Project not found');
+    const node = p.nodes.find((n) => n.id === conceptId);
+    if (!node) throw httpError(404, 'Concept not found in this project');
+    const askMode = mode === 'source' ? 'source' : 'ask';
+    const raw = String(question || '').trim().slice(0, 1000);
+    if (askMode === 'ask' && !raw) throw httpError(400, 'Ask a question first.');
+
+    const lesson = store.readLesson(p.id, conceptId);
+    if (!lesson) throw httpError(400, 'Open the refresher before asking about it.');
+
+    const chat = store.readLessonChat(p.id, conceptId);
+    const messages = lessonAskMessages({
+      node,
+      lesson: lesson.lesson,
+      chat,
+      question: raw,
+      mode: askMode,
+      paperTitles: p.papers.map((x) => x.title || x.name),
+      field: p.field
+    });
+
+    const { text, message } = await callLLMRaw(store.getSettings(), messages, { json: true, maxTokens: 4000 });
+    const parsed = parseModelJSON(text);
+    if (!parsed.answer) throw httpError(502, 'The model returned an empty answer. Try again.');
+
+    const entry = {
+      id: store.id(),
+      ts: Date.now(),
+      mode: askMode,
+      raw: raw || (askMode === 'source' ? 'Where does this come from?' : ''),
+      question: String(parsed.question || raw || 'Sources for this concept'),
+      answer: String(parsed.answer),
+      sources: (Array.isArray(parsed.sources) ? parsed.sources : []).slice(0, 8).map((x) => String(x).slice(0, 400)),
+      ...(message && message.reasoning_details ? { reasoningDetails: message.reasoning_details } : {})
+    };
+    const saved = store.saveLessonChat(p.id, conceptId, [...chat, entry]);
+    store.logEvent(p.id, 'lesson_question', { concept: node.name, mode: askMode });
+    res.json({ chat: saved, entry });
   })
 );
 

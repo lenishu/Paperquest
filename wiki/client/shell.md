@@ -32,6 +32,13 @@ when `useJobs().completions[projectId]` bumps (job finished).
 - `ProjectView.jsx` — per-project shell: Overview / MapView / PapersView /
   HistoryView + `LearnModal` + `PaperReader` overlays
 - `SettingsModal.jsx`, `InfoModals.jsx` (badges/bookmarks/about/help)
+  Settings offers two ways to set up a connection: the form, or the
+  "Set up with code" panel (`ConnCodePanel`, same file) which parses a pasted
+  Python/JS/cURL request into the fields and renders the equivalent request
+  back in all three languages — both directions live in `client/src/snippet.js`
+  (`parseSnippet` / `renderSnippet`, no network, keys never leave the page).
+  Providers with `reasoning: true` (OpenRouter) also get a reasoning toggle
+  + effort select.
 - `bits.jsx` — ToastCtx/ToastHost, Spinner, Confetti (shared primitives)
 - Errors: per-view `ErrorBoundary` in App.jsx (crash → reload card);
   errors surface as toasts via `useToast`

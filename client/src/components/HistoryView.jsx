@@ -9,6 +9,7 @@ const EVENT_META = {
   paper_analyzed: ['🧠', 'Paper analyzed'],
   analysis_undone: ['↩️', 'Analysis undone'],
   lesson_generated: ['📖', 'Lesson opened'],
+  lesson_question: ['💬', 'Asked about a lesson'],
   concept_viewed: ['👁️', 'Reviewed concept'],
   concept_mastered: ['✅', 'Concept mastered'],
   concept_skipped: ['⏭️', 'Marked as known'],

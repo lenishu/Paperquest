@@ -67,7 +67,7 @@ flowchart LR
 | Design | Custom CSS design system (warm-paper light theme from the claude.ai/design project) | Space Grotesk / Inter / JetBrains Mono, `#E4572E` primary, `#2E86AB` secondary |
 | Backend | Node 18+, Express 4, multer | REST API, file uploads |
 | PDF extraction | `pdfjs-dist` (Mozilla pdf.js) | **Local, no AI** PDF → Markdown |
-| AI adapter | `server/llm.js` (plain `fetch`, no SDKs) | One interface over Gemini / Anthropic / OpenAI, JSON mode, 240 s timeout, malformed-JSON repair |
+| AI adapter | `server/llm.js` (plain `fetch`, no SDKs) | One interface over Gemini / Anthropic / OpenAI(-compatible) / OpenRouter, JSON mode, reasoning passthrough, 240 s timeout, malformed-JSON repair |
 | Storage | Plain JSON / Markdown / JSONL files in `data/` | No database — copy the folder to back up everything |
 | References | Semantic Scholar Graph API | Citation network (external API, **not** AI) |
 
@@ -78,12 +78,16 @@ flowchart LR
 | Google Gemini *(default)* | `gemini-2.5-flash` | `generativelanguage.googleapis.com :generateContent` |
 | Anthropic | `claude-sonnet-5` | `api.anthropic.com/v1/messages` |
 | OpenAI | `gpt-4o-mini` | `api.openai.com/v1/chat/completions` |
+| OpenRouter | `google/gemma-4-31b-it:free` | `openrouter.ai/api/v1/chat/completions` — plus optional `reasoning` and `reasoning_details` carried across turns |
 
-Exactly **one provider is active at a time** (chosen in ⚙ Settings; model name is free-text so any current model works). Every AI feature goes through the same `callLLM()` in `server/llm.js`. There are only **three AI call sites** in the whole codebase:
+(Groq, Zhipu GLM and any OpenAI-compatible endpoint reuse the OpenAI request shape with a different base URL.)
+
+Exactly **one provider is active at a time** (chosen in ⚙ Settings; model name is free-text so any current model works). Every AI feature goes through the same `callLLM()` in `server/llm.js`. The core AI call sites are:
 
 1. **Settings → Test connection** — a tiny prompt to validate the key/model.
 2. **Paper analysis** — build or merge the prerequisite concept graph.
 3. **Lesson generation** — write a lesson + 4-question quiz for one concept.
+4. **Lesson Q&A** — answer a follow-up question (or list sources) about an open refresher, replaying the stored thread.
 
 Everything else — XP, levels, streaks, quests, badges, graph layout, unlock logic, heatmaps, recommendations — is deterministic local code.
 

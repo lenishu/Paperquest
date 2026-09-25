@@ -40,7 +40,18 @@ const STATE_LABEL = {
   locked: 'Builds on earlier topics'
 };
 
-export default function NodePanel({ node, nodes, states, mastery, sharedWith, papers, projectId, bookmarked, onToggleBookmark, onSelect, onOpenLesson, onSkip, onOpenSettings, onClose, note, onSaveNote }) {
+
+// "Saved 3d ago" — a lesson already on disk reopens for free, no model call.
+export function savedAgo(ms) {
+  if (!ms) return '';
+  const s = (Date.now() - ms) / 1000;
+  if (s < 3600) return 'saved just now';
+  if (s < 86400) return 'saved ' + Math.floor(s / 3600) + 'h ago';
+  if (s < 2592000) return 'saved ' + Math.floor(s / 86400) + 'd ago';
+  return 'saved ' + new Date(ms).toLocaleDateString();
+}
+
+export default function NodePanel({ node, nodes, states, mastery, sharedWith, papers, projectId, bookmarked, onToggleBookmark, onSelect, onOpenLesson, onSkip, onOpenSettings, onClose, note, onSaveNote, savedAt }) {
   const st = states[node.id] || 'locked';
   const tier = tierOf(node);
   const m = mastery[node.id];
@@ -75,6 +86,14 @@ export default function NodePanel({ node, nodes, states, mastery, sharedWith, pa
             <button className="btn btn-ghost" onClick={onOpenSettings}>Open settings</button>
           </div>
         </div>
+      );
+    if (savedAt && !(ls && ls.status === 'preparing'))
+      return (
+        <>
+          <button className="btn btn-primary" onClick={() => onOpenLesson(node)}>📖 Open saved refresher</button>
+          <button className="btn btn-ghost" onClick={() => onSkip(node)}>I already know this</button>
+          <div className="dim small np-saved">Written once and kept on disk ({savedAgo(savedAt)}) — reopening costs nothing. Regenerate inside if you want a fresh one.</div>
+        </>
       );
     if (ls && ls.status === 'ready')
       return (

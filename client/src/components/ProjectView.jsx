@@ -83,11 +83,11 @@ export default function ProjectView({ id, tab, onTab, initialSel, onOpenConcept,
   return (
     <div className="project-shell">
       {tab === 'overview' && (
-        <Overview id={id} project={project} states={states} mastery={mastery} notes={data.notes || {}}
+        <Overview id={id} project={project} states={states} mastery={mastery} notes={data.notes || {}} lessons={data.lessons || {}}
           onOpenConcept={openConcept} onOpenLesson={(n) => setLearn(n)} onOpenSettings={openSettings} onGotoMap={() => onTab('papers')} />
       )}
       {tab === 'map' && (
-        <MapView id={id} project={project} states={states} mastery={mastery} sharedWith={sharedWith}
+        <MapView id={id} project={project} states={states} mastery={mastery} sharedWith={sharedWith} lessons={data.lessons || {}}
           selectedId={sel} onSelect={selectNode} onOpenLesson={(n) => setLearn(n)} onSkip={skipNode}
           onOpenSettings={openSettings} onAddPaper={() => onTab('papers')}
           bookmarks={bookmarks} onToggleBookmark={toggleBookmark}

@@ -13,8 +13,9 @@ read that ONE page, then open only the files it names. Do not scan the repo.
 | Reference explorer — citation map, similar papers, expansion | [client/references.md](client/references.md) | `ReferencesModal.jsx`, `ReferenceGraph.jsx`, `server/references.js`, `/api/s2/*` routes |
 | Storage, data files, settings, mastery, events, undo | [server/storage.md](server/storage.md) | `server/store.js` |
 | SPA navigation, views, deep links, modals, toasts | [client/shell.md](client/shell.md) | `client/src/App.jsx`, `TopBar.jsx`, `Sidebar.jsx` |
+| Settings UI — connections, reasoning toggle, code-snippet import/export | [client/shell.md](client/shell.md) | `SettingsModal.jsx`, `client/src/snippet.js` |
 | Knowledge graph navigator, skill-tree map, node colors/layout | [client/visualizations.md](client/visualizations.md) | `KnowledgeGraph.jsx`, `SkillTreeCanvas.jsx`, `graphLayout.js` (+ legacy `Galaxy3D/BrainMap/GalaxyPanel.jsx`), `/api/graph` |
-| Lessons, quizzes, completing concepts, XP, background jobs | [client/learning.md](client/learning.md) | `LearnModal.jsx`, `NodePanel.jsx`, `jobs.jsx`, `/api/complete` |
+| Lessons, quizzes, lesson Q&A, completing concepts, XP, background jobs | [client/learning.md](client/learning.md) | `LearnModal.jsx`, `LessonChat.jsx`, `NodePanel.jsx`, `jobs.jsx`, `/api/complete`, `/api/projects/:id/lesson/ask` |
 | Visual style, tokens, shared UI bits | [client/design.md](client/design.md) | `client/src/styles.css`, `bits.jsx` + DESIGN_SYSTEM.md |
 | Whole-system understanding / cross-cutting change | [architecture.md](architecture.md) | starts there, then per-page |
 

@@ -929,6 +929,29 @@ code { background: var(--surface-2); border: 1px solid var(--line); padding: 1px
 .conn-test { font-size: 12px; font-weight: 500; }
 .conn-test.ok { color: var(--green); }
 .conn-test.bad { color: var(--danger); }
+/* Reasoning toggle + the "set up with code" panel (SettingsModal). */
+.field-sub { font-size: var(--fs-label); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.conn-reason { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; padding: var(--sp-2) var(--sp-3); border: 1px dashed var(--line-2); border-radius: var(--r-sm); background: var(--surface); }
+.conn-reason select { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 5px 8px; font: inherit; font-size: var(--fs-xs); color: var(--text); }
+.conn-reason .dim { flex: 1 1 220px; }
+.conn-code { border-top: 1px dashed var(--line-2); padding-top: var(--sp-2); }
+.conn-code-body { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-3); }
+.conn-code-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+.conn-snippet {
+  font-family: var(--fm); font-size: var(--fs-xs); line-height: 1.5;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: var(--sp-2) var(--sp-3); resize: vertical;
+}
+.conn-snippet:focus { outline: none; border-color: var(--secondary); }
+.conn-snippet-out {
+  margin: 0; max-height: 260px; overflow: auto;
+  background: var(--hero-bg); color: var(--hero-text);
+  border: 1px solid var(--hero-line); border-radius: var(--r-md);
+  padding: var(--sp-3); font-family: var(--fm); font-size: var(--fs-xs); line-height: 1.55;
+}
+.conn-snippet-out code { background: none; border: none; padding: 0; color: inherit; white-space: pre; }
+
 .btn-add-conn { align-self: flex-start; }
 .linkbtn.danger { color: var(--danger); }
 
@@ -969,6 +992,15 @@ code { background: var(--surface-2); border: 1px solid var(--line); padding: 1px
 .learn-error { padding: 16px 0; }
 .learn-error p { color: var(--danger); font-weight: 500; }
 .learn-body { overflow-y: auto; min-height: 0; padding-right: 6px; }
+
+/* "this came off disk, not the model" — see LearnModal / NodePanel. */
+.lesson-saved {
+  display: flex; gap: var(--sp-2); align-items: baseline;
+  margin-bottom: var(--sp-4); padding: var(--sp-2) var(--sp-3);
+  border: 1px dashed var(--line-2); border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.np-saved { margin-top: var(--sp-2); line-height: 1.45; }
 
 .lesson-md { font-size: 14.5px; line-height: 1.7; color: var(--text); }
 .lesson-md h1, .lesson-md h2, .lesson-md h3 { margin: 20px 0 8px; }
@@ -1017,6 +1049,48 @@ code { background: var(--surface-2); border: 1px solid var(--line); padding: 1px
 .quiz-result.pass { background: rgba(31, 157, 87, 0.08); border: 1px solid rgba(31, 157, 87, 0.3); }
 .quiz-result.fail { background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.35); }
 .quiz-result-big { font-family: var(--fd); font-weight: 700; font-size: 18px; }
+/* Follow-up Q&A under a refresher (LessonChat). The paraphrased question is the
+   highlighted anchor of each turn; the answer sits directly beneath it. */
+.qa { margin-top: var(--sp-6); border-top: 1px solid var(--line); padding-top: var(--sp-4); }
+.qa-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+.qa-head .quiz-title { margin-bottom: var(--sp-1); }
+.qa-intro { margin: 0 0 var(--sp-3); }
+.qa-empty { padding: var(--sp-3); border: 1px dashed var(--line-2); border-radius: var(--r-md); background: var(--surface-2); }
+.qa-thread { display: flex; flex-direction: column; gap: var(--sp-3); }
+.qa-turn {
+  border: 1px solid var(--line); border-left: 3px solid var(--secondary);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: var(--surface); padding: var(--sp-3) var(--sp-4);
+}
+.qa-turn.is-new { border-left-color: var(--primary); box-shadow: 0 0 0 3px rgba(228, 87, 46, 0.1); }
+.qa-q { display: flex; align-items: flex-start; gap: var(--sp-2); flex-wrap: wrap; }
+.qa-badge { background: rgba(46, 134, 171, 0.12); color: var(--secondary); flex-shrink: 0; }
+.qa-badge.src { background: rgba(245, 158, 11, 0.15); color: var(--amber-t); }
+.qa-qtext {
+  flex: 1 1 240px; background: rgba(245, 158, 11, 0.22); color: var(--text);
+  font-family: var(--fd); font-weight: 600; font-size: var(--fs-md); line-height: 1.45;
+  border-radius: var(--r-sm); padding: 2px var(--sp-2);
+}
+.qa-raw { margin: var(--sp-2) 0 0; font-style: italic; }
+.qa-a { margin-top: var(--sp-3); font-size: var(--fs-base); }
+.qa-a > :last-child { margin-bottom: 0; }
+.qa-sources { margin-top: var(--sp-3); border-top: 1px dashed var(--line-2); padding-top: var(--sp-2); }
+.qa-sources ul { margin: var(--sp-1) 0 0; padding-left: var(--sp-5); }
+.qa-sources li { font-size: var(--fs-sm); color: var(--text-2); margin-bottom: var(--sp-1); }
+.qa-time { margin-top: var(--sp-2); }
+.qa-busy { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); font-size: var(--fs-sm); color: var(--text-2); }
+.qa-error { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-3); font-size: var(--fs-sm); color: var(--danger); }
+.qa-compose { margin-top: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
+.qa-input {
+  font: inherit; font-size: var(--fs-base); line-height: 1.5; color: var(--text);
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3); resize: vertical;
+}
+.qa-input:focus { outline: none; border-color: var(--secondary); }
+.qa-input:disabled { background: var(--surface-2); color: var(--muted); }
+.qa-actions { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.qa-hint { margin-left: auto; }
+
 
 /* references explorer — ResearchRabbit-style citation map */
 .refs-title { margin: 6px 0 0; font-size: 18px; }

@@ -7,6 +7,7 @@ import { api } from '../api';
 import { Modal, useToast } from './bits';
 import MathText, { normalizeMath } from './MathText';
 import { tierOf, TIER_LABELS } from '../graphLayout';
+import LessonChat from './LessonChat';
 
 const LOADING_LINES = [
   'Reading what you already know…',
@@ -20,6 +21,7 @@ export default function LearnModal({ projectId, node, isMastered, onClose, onCom
   const [phase, setPhase] = useState('loading'); // loading | error | ready
   const [err, setErr] = useState('');
   const [data, setData] = useState(null);
+  const [chat, setChat] = useState([]); // follow-up Q&A thread, arrives with the lesson
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState(null);
   const [loadingLine, setLoadingLine] = useState(0);
@@ -34,6 +36,7 @@ export default function LearnModal({ projectId, node, isMastered, onClose, onCom
     api(`/projects/${projectId}/lesson`, { method: 'POST', body: { conceptId: node.id, regenerate } })
       .then((d) => {
         setData(d);
+        setChat(d.chat || []);
         setPhase('ready');
       })
       .catch((e) => {
@@ -74,6 +77,11 @@ export default function LearnModal({ projectId, node, isMastered, onClose, onCom
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
   }
 
+  function regenerate() {
+    if (!window.confirm("Write a new lesson and quiz with AI? This replaces the saved one for this concept and uses your API key — reopening the saved lesson is free.")) return;
+    load(true);
+  }
+
   function skip() {
     if (!window.confirm(`Mark "${node.name}" as already reviewed? (counts toward progress, half XP)`)) return;
     api('/complete', { method: 'POST', body: { projectId, conceptId: node.id, skipped: true } })
@@ -93,7 +101,7 @@ export default function LearnModal({ projectId, node, isMastered, onClose, onCom
         </div>
         <div className="learn-head-actions">
           {phase === 'ready' && (
-            <button className="btn btn-ghost small-btn" title="Generate a fresh lesson" onClick={() => load(true)}>
+            <button className="btn btn-ghost small-btn" title="Write a new lesson with AI — replaces the saved one" onClick={regenerate}>
               🔁 Regenerate
             </button>
           )}
@@ -110,7 +118,7 @@ export default function LearnModal({ projectId, node, isMastered, onClose, onCom
         <div className="learn-loading">
           <div className="spinner" />
           <div className="spinner-label">{LOADING_LINES[loadingLine]}</div>
-          <div className="dim small">Lessons are generated once and cached for this project.</div>
+          <div className="dim small">Written once, then saved to disk — every time after this it opens instantly, free.</div>
         </div>
       )}
 
@@ -126,6 +134,12 @@ export default function LearnModal({ projectId, node, isMastered, onClose, onCom
 
       {phase === 'ready' && data && (
         <div className="learn-body">
+          {data.cached && (
+            <div className="lesson-saved dim small">
+              📖 Your saved copy — written once and kept on disk, so reopening it never calls the model.
+              Use 🔁 Regenerate only if you want a different one.
+            </div>
+          )}
           <article className="lesson-md">
             <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
               {normalizeMath(data.lesson)}
@@ -197,12 +211,20 @@ export default function LearnModal({ projectId, node, isMastered, onClose, onCom
                     >
                       Try again
                     </button>
-                    <button className="btn btn-ghost" onClick={() => load(true)}>New lesson &amp; questions</button>
+                    <button className="btn btn-ghost" onClick={regenerate}>New lesson &amp; questions</button>
                   </div>
                 </div>
               )}
             </div>
           </div>
+
+          <LessonChat
+            projectId={projectId}
+            node={node}
+            chat={chat}
+            onChat={setChat}
+            openSettings={openSettings}
+          />
         </div>
       )}
     </Modal>

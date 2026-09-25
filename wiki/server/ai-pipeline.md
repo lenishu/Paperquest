@@ -5,12 +5,19 @@ Everything between "user clicked analyze/learn" and "valid graph/lesson on disk"
 ## server/llm.js — provider adapter
 `callLLM(settings, messages, {json, maxTokens})` resolves the **active
 connection** (`store.activeConnection`) and dispatches by the provider's `kind`
-(from `store.PROVIDERS`): `openai` / `anthropic` / `gemini`, all via global
-`fetch`, `TIMEOUT_MS = 240000`. The `openai` kind serves OpenAI **and** any
+(from `store.PROVIDERS`): `openai` / `openrouter` / `anthropic` / `gemini`, all
+via global `fetch`, `TIMEOUT_MS = 240000`. The `openai` kind serves OpenAI **and** any
 OpenAI-compatible endpoint (Groq, Zhipu GLM, custom) — same function, the
 connection's `baseUrl` (or the provider default) picks the host, and only real
 OpenAI uses `max_completion_tokens` (others use `max_tokens`). On a 400 it
 recovers by swapping the token param or dropping `response_format` (JSON mode).
+The `openrouter` kind is OpenAI-shaped plus two extras: it sends
+`reasoning: {enabled, effort}` when the connection asks for it, and it forwards
+each assistant message's `reasoning_details` **unmodified**, so a reasoning model
+resumes its thinking across turns (used by the lesson Q&A thread). It drops
+`response_format`/`reasoning` and retries if the model rejects them.
+`callLLMRaw` is the variant that returns `{text, message}` — callers continuing a
+thread need `message.reasoning_details`; `callLLM` is the text-only wrapper.
 `parseModelJSON(text)` strips fences/prose and parses the model's JSON (never
 `JSON.parse` raw output). `httpError` also lives here.
 **Change here when:** adding a provider *kind* (register metadata in
@@ -30,6 +37,11 @@ Providers/keys are a list of connections — see [storage.md](storage.md).
   must preserve existing node ids while weaving new concepts in.
 - `lessonMessages({node, masteredNames, paperTitles, field, usageText})` —
   lesson + quiz generation; consumes the node's `usage` text from the paper.
+- `lessonAskMessages({node, lesson, chat, question, mode, paperTitles, field})` —
+  follow-up Q&A on an open refresher. Returns strict JSON
+  `{question (paraphrase), answer (markdown), sources[]}`; prior turns are
+  replayed as real user/assistant messages so reasoning carries forward.
+  `mode: 'source'` swaps the final user turn for a provenance request.
 **Change here when:** output quality/shape issues, persona/difficulty tuning.
 Keep the mandatory-fields language (tier/branch/prereqs/usage) — sanitize
 depends on it.

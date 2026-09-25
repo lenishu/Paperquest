@@ -54,6 +54,7 @@ export function JobsProvider({ children }) {
           await api(`/projects/${job.projectId}/lesson`, { method: 'POST', body: { conceptId: job.conceptId } });
           patch(job.id, { status: 'done' });
           setLesson(job.projectId, job.conceptId, { status: 'ready' });
+          bump(job.projectId); // refetch so the concept shows as saved right away
           setTimeout(() => setJobs((js) => js.filter((j) => j.id !== job.id)), 2500);
         } else if (job.kind === 'career-generate') {
           patch(job.id, { status: 'mapping' });

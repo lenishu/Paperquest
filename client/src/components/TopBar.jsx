@@ -14,7 +14,7 @@ const EV = {
   paper_added: ['📄', 'Uploaded paper'], paper_removed: ['🗑', 'Removed paper'], paper_analyzed: ['🧠', 'Mapped paper'],
   lesson_generated: ['📖', 'Opened lesson'], concept_mastered: ['✅', 'Mastered'], concept_skipped: ['⏭', 'Marked known'],
   concept_viewed: ['👁', 'Reviewed'], concept_bookmarked: ['♥', 'Bookmarked'], project_created: ['🌱', 'New project'],
-  analysis_undone: ['↩', 'Undid analysis'], memory_edited: ['🧠', 'Edited memory']
+  analysis_undone: ['↩', 'Undid analysis'], memory_edited: ['🧠', 'Edited memory'], lesson_question: ['💬', 'Asked a question']
 };
 const ago = (t) => { const s = (Date.now() - t) / 1000; if (s < 3600) return Math.max(1, Math.floor(s / 60)) + 'm ago'; if (s < 86400) return Math.floor(s / 3600) + 'h ago'; return Math.floor(s / 86400) + 'd ago'; };
 

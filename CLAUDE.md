@@ -19,7 +19,7 @@ server/            Node + Express API (no build step)
   store.js         file-based storage under data/ — ATOMIC writes (temp+fsync+rename)
   graphUtil.js     sanitize LLM graph, tiers (novice/intermediate/advanced), repairGraph backstop, states
   prompts.js       all LLM prompts (concept extraction/merge, lessons) + BASELINE persona
-  llm.js           provider adapter: OpenAI / Anthropic / Gemini (global fetch)
+  llm.js           provider adapter: OpenAI(-compatible) / OpenRouter / Anthropic / Gemini (global fetch)
   pdfToMd.js       PDF→Markdown: docling (default, Python) → pdf.js fallback
   references.js    Semantic Scholar reference/citation lookup (needs internet)
   demo.js          hard-coded demo project (works with no API key)
@@ -30,7 +30,7 @@ client/src/
   jobs.jsx            background job queue (upload+analyze, lesson) with progress dock + failure step-up
   styles.css          design system tokens (see DESIGN_SYSTEM.md) + all styles
 archive/              retired PaperQuest.dc.html (old /dc dashboard; route redirects to /)
-data/                 (gitignored) settings.json, mastery.json, profile.json, bookmarks.json, careers/ (career.json per career + resume.md/.json), projects/<id>/{project.json, papers/*.md|pdf, lessons/*.json, events.jsonl, audit.jsonl, project.md, nodes.prev.json}
+data/                 (gitignored) settings.json, mastery.json, profile.json, bookmarks.json, careers/ (career.json per career + resume.md/.json), projects/<id>/{project.json, papers/*.md|pdf, lessons/*.json (+ *.chat.json Q&A threads), events.jsonl, audit.jsonl, project.md, nodes.prev.json}
 ```
 
 ## Data model

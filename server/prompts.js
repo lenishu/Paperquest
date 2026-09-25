@@ -308,4 +308,69 @@ ${truncateDoc(resumeMd, 20000, 3000)}
   ];
 }
 
-module.exports = { conceptExtractionMessages, conceptMergeMessages, lessonMessages, truncateDoc, BASELINE, careerSkillsMessages, careerJdMergeMessages, resumeSkillsMessages };
+// ---------------- lesson Q&A ----------------
+
+// Follow-up questions asked from inside an open refresher. `chat` is the stored
+// thread (oldest first); prior turns are replayed as real assistant messages so a
+// reasoning provider can carry its `reasoning_details` forward (see llm.js).
+// mode 'source' asks for provenance instead of an explanation.
+function lessonAskMessages({ node, lesson, chat, question, mode, paperTitles, field }) {
+  const papers = (paperTitles || []).length ? paperTitles.map((t) => `"${t}"`).join(', ') : 'the papers in this project';
+  const sourceMode = mode === 'source';
+
+  const messages = [
+    {
+      role: 'system',
+      content: `You are the same warm, precise teacher who wrote the refresher below. You answer follow-up questions about it for a learner whose baseline is a strong high-school student. You respond with strict JSON.`
+    },
+    {
+      role: 'user',
+      content: `${BASELINE}
+
+CONCEPT: "${node.name}"${node.branch ? ` (branch: ${node.branch})` : ''} — ${node.blurb || ''}
+This concept is a step toward understanding ${papers}${field ? ` (field: ${field})` : ''}.
+
+THE REFRESHER THE LEARNER IS READING:
+"""
+${String(lesson || '').slice(0, 9000)}
+"""
+
+Answer the learner's follow-up questions about this refresher. Reply to each with STRICT JSON only:
+{
+  "question": "the learner's question, paraphrased into one clear, self-contained sentence",
+  "answer": "markdown answer",
+  "sources": ["Author, \\"Title\\" (year) — what to look at, and why"]
+}
+
+Rules for every answer:
+- "question" restates what they asked in your own words — specific, one sentence, no preamble. If their question is vague, paraphrase it into the sharpest reading of what they likely meant.
+- "answer": 80-250 words of markdown, building only on the baseline and this refresher. Use "##" headings only if the answer really needs two parts. Math is KaTeX: $...$ inline, $...$ display.
+- "sources": textbooks, canonical papers, lecture notes. Cite only real, well-known works you are confident exist; never invent a title, author or DOI. Say so in the answer if you are unsure. Use [] when a source adds nothing.
+- If the question is off-topic, answer briefly and steer back to the concept.`
+    },
+    {
+      role: 'assistant',
+      content: '{"question":"Ready — what would you like to ask about this refresher?","answer":"Ask away.","sources":[]}'
+    }
+  ];
+
+  for (const turn of chat || []) {
+    messages.push({ role: 'user', content: turn.raw || turn.question || '' });
+    messages.push({
+      role: 'assistant',
+      content: JSON.stringify({ question: turn.question || '', answer: turn.answer || '', sources: turn.sources || [] }),
+      ...(turn.reasoningDetails ? { reasoning_details: turn.reasoningDetails } : {})
+    });
+  }
+
+  messages.push({
+    role: 'user',
+    content: sourceMode
+      ? `Where does this come from? Give the sources a learner should read to verify and go deeper${question ? `, focused on: ${question}` : ' for this concept as taught above'}. Fill "sources" with 2-4 real, canonical works and use "answer" to say what each one covers and in what order to read them.`
+      : String(question)
+  });
+
+  return messages;
+}
+
+module.exports = { conceptExtractionMessages, conceptMergeMessages, lessonMessages, lessonAskMessages, truncateDoc, BASELINE, careerSkillsMessages, careerJdMergeMessages, resumeSkillsMessages };

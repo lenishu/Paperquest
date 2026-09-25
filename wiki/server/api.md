@@ -25,8 +25,20 @@ pipeline → see [ai-pipeline.md](ai-pipeline.md));
 `PUT …/notes`; `DELETE` paper; `GET …/references` (Semantic Scholar, cached in
 `paper.refsCache`, `?refresh` bypasses).
 
-**Learning** — `POST /projects/:id/lesson` (cache-first, `regenerate` flag);
+**Learning** — `POST /projects/:id/lesson` (cache-first, `regenerate` flag;
+response carries the concept's Q&A `chat` and `cached: true|false`). A lesson is
+written by the model ONCE and served from `lessons/<conceptId>.json` forever
+after — only `regenerate: true` spends tokens. `GET /projects/:id` reports which
+concepts already have one as `lessons: { conceptId: savedAtMs }`
+(`store.listLessons`, stat-only), which is what lets the UI open a saved lesson
+without going near the model;
 `POST /complete` (marks mastery globally, awards XP via `xpForNode`).
+
+**Lesson Q&A** — `POST /projects/:id/lesson/ask` `{conceptId, question, mode}`
+where mode is `ask` | `source`; replays the stored thread to the model
+(`lessonAskMessages`) and always returns the WHOLE thread plus the new `entry`.
+Requires a cached lesson. `GET|DELETE /projects/:id/lesson/chat?conceptId=`
+read/clear it. Logs a `lesson_question` event.
 
 **Node notes** — `PUT /projects/:id/nodes/:nodeId/notes` (`{text}`) saves the
 user's own note on a concept to `notes.json` (empty text deletes it); returned

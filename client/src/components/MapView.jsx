@@ -2,7 +2,7 @@ import React from 'react';
 import SkillTreeCanvas from './SkillTreeCanvas';
 import NodePanel from './NodePanel';
 
-export default function MapView({ id, project, states, mastery, sharedWith, selectedId, onSelect, onOpenLesson, onSkip, onOpenSettings, onAddPaper, bookmarks, onToggleBookmark, notes, onSaveNote }) {
+export default function MapView({ id, project, states, mastery, sharedWith, selectedId, onSelect, onOpenLesson, onSkip, onOpenSettings, onAddPaper, bookmarks, onToggleBookmark, notes, onSaveNote, lessons }) {
   const selNode = selectedId ? project.nodes.find((n) => n.id === selectedId) : null;
   return (
     <div className="tree-wrap">
@@ -32,6 +32,7 @@ export default function MapView({ id, project, states, mastery, sharedWith, sele
           onSkip={onSkip}
           onOpenSettings={onOpenSettings}
           onClose={() => onSelect(null)}
+          savedAt={(lessons || {})[selectedId] || 0}
           note={(notes && notes[selectedId] && notes[selectedId].text) || ''}
           onSaveNote={onSaveNote}
         />

@@ -16,7 +16,7 @@ const EV = {
   paper_added: ['📄', 'Uploaded a paper'], paper_removed: ['🗑', 'Removed a paper'], paper_analyzed: ['🧠', 'Mapped a paper'],
   lesson_generated: ['📖', 'Opened lesson'], concept_mastered: ['✅', 'Mastered concept'], concept_skipped: ['⏭', 'Marked as known'],
   concept_viewed: ['👁', 'Reviewed concept'], concept_bookmarked: ['♥', 'Bookmarked'], project_created: ['🌱', 'Created project'],
-  analysis_undone: ['↩', 'Undid analysis'], memory_edited: ['🧠', 'Edited project memory']
+  analysis_undone: ['↩', 'Undid analysis'], memory_edited: ['🧠', 'Edited project memory'], lesson_question: ['💬', 'Asked about a lesson']
 };
 const branchGlyph = (name) => { const s = (name || '').toLowerCase(); for (const [re, g] of BRANCH_GLYPHS) if (re.test(s)) return g; return (name || '?').trim()[0].toUpperCase(); };
 const ago = (t) => { const s = (Date.now() - t) / 1000; if (s < 3600) return Math.max(1, Math.floor(s / 60)) + 'm ago'; if (s < 86400) return Math.floor(s / 3600) + 'h ago'; if (s < 172800) return 'Yesterday'; return Math.floor(s / 86400) + 'd ago'; };
