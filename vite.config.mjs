@@ -5,7 +5,8 @@ export default defineConfig({
   root: 'client',
   plugins: [react()],
   build: {
-    outDir: '../dist',
+    // `root` is `client`, so this resolves to the directory Netlify publishes.
+    outDir: 'dist',
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
