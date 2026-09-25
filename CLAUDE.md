@@ -15,7 +15,7 @@ PaperQuest — a local web app. Drop in a research paper (PDF/MD); it converts t
 ## Layout
 ```
 server/            Node + Express API (no build step)
-  index.js         all routes (~single file); mounts static client/dist
+  index.js         all routes (~single file); mounts static client/dist (Vite build output)
   store.js         file-based storage under data/ — ATOMIC writes (temp+fsync+rename)
   graphUtil.js     sanitize LLM graph, tiers (novice/intermediate/advanced), repairGraph backstop, states
   prompts.js       all LLM prompts (concept extraction/merge, lessons) + BASELINE persona
