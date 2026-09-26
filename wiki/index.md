@@ -5,7 +5,7 @@ read that ONE page, then open only the files it names. Do not scan the repo.
 
 | Task ("I need to change…") | Read | Files you will touch |
 |---|---|---|
-| Netlify deployment, private workspaces, hosted background jobs | [hosting.md](hosting.md) | `netlify.toml`, `netlify/functions/`, `server/cloud.js`, `server/workspace.js`, `client/src/api.js`, `WorkspaceSettings.jsx` |
+| Netlify deployment, private workspaces, hosted background jobs, local project import | [hosting.md](hosting.md) | `netlify.toml`, `netlify/functions/`, `server/cloud.js`, `server/backup.js`, `server/workspace.js`, `scripts/export-workspace.js`, `client/src/api.js`, `WorkspaceSettings.jsx` |
 | An API endpoint (add/modify/fix a route) | [server/api.md](server/api.md) | `server/index.js` |
 | Concept-graph extraction, merge, repair, tiers, XP math | [server/ai-pipeline.md](server/ai-pipeline.md) | `server/prompts.js`, `server/graphUtil.js`, analyze route in `server/index.js` |
 | LLM providers, timeouts, JSON parsing of model output | [server/ai-pipeline.md](server/ai-pipeline.md) | `server/llm.js` |

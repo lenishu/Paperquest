@@ -5,6 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const zlib = require('node:zlib');
 const workspace = require('./workspace');
+const { validateBackup, canImport, MAX_TEXT } = require('./backup');
 
 const COOKIE = '__Host-paperquest';
 const TOKEN = /^[a-f0-9]{64}$/;
@@ -160,6 +161,48 @@ async function queue(blobs, token, event, dispatch) {
   }
   return json({ jobId: job.id }, 202);
 }
+async function importBackup(req, blobs, token) {
+  const raw = await req.text();
+  if (Buffer.byteLength(raw) > 2 * 1024 * 1024) throw fail(413, 'Backup chunks must be smaller than 2 MB.');
+  let body;
+  try { body = JSON.parse(raw); } catch { throw fail(400, 'Invalid backup request.'); }
+  if (!/^[a-f0-9]{32}$/.test(body.id || '')) throw fail(400, 'Invalid import ID.');
+  const key = namespace(token) + '/import';
+  const previous = await blobs.getWithMetadata(key, { type: 'text', consistency: 'strong' });
+  let state = previous ? unseal(previous.data, token) : null;
+  const options = previous ? { onlyIfMatch: previous.etag } : { onlyIfNew: true };
+  if (body.action === 'start') {
+    if (!Number.isInteger(body.size) || body.size < 1 || body.size > MAX_TEXT || !TOKEN.test(body.digest || '')) throw fail(400, 'Invalid backup size or checksum.');
+    state = { id: body.id, size: body.size, digest: body.digest, chunks: [], received: 0, createdAt: Date.now() };
+  } else {
+    if (!state || state.id !== body.id || Date.now() - state.createdAt > 30 * 60 * 1000) throw fail(409, 'The import expired. Choose the backup and start again.');
+    if (body.action === 'finish' && state.done) return json(state.summary);
+    if (state.done) throw fail(409, 'This import is already complete.');
+    if (body.action === 'part') {
+      if (!Number.isInteger(body.index) || typeof body.chunk !== 'string' || !body.chunk.length || body.chunk.length > 1024 * 1024) throw fail(400, 'Invalid backup chunk.');
+      if (body.index < state.chunks.length && state.chunks[body.index] === body.chunk) return json({ received: state.received });
+      if (body.index !== state.chunks.length) throw fail(409, 'Backup chunks arrived out of order.');
+      state.received += Buffer.byteLength(body.chunk);
+      if (state.received > state.size) throw fail(413, 'Backup exceeds its declared size.');
+      state.chunks.push(body.chunk);
+    } else if (body.action === 'finish') {
+      const text = state.chunks.join('');
+      if (state.received !== state.size || hash(text) !== state.digest) throw fail(400, 'The backup is incomplete or damaged.');
+      let backup;
+      try { backup = JSON.parse(text); } catch { throw fail(400, 'Invalid backup JSON.'); }
+      const { files, ...summary } = validateBackup(backup);
+      const workspaceKey = namespace(token) + '/workspace';
+      const saved = await blobs.get(workspaceKey, { type: 'text', consistency: 'strong' });
+      const current = saved ? unseal(saved, token) : {};
+      if (!canImport(current, files)) throw fail(409, 'Import needs an empty workspace so existing projects and progress stay safe.');
+      await saveChanges(blobs, workspaceKey, token, current, { ...current, ...files });
+      state = { id: state.id, createdAt: state.createdAt, done: true, summary };
+    } else throw fail(400, 'Unknown import action.');
+  }
+  const result = await blobs.set(key, seal(state, token), options);
+  if (!result.modified) throw fail(409, 'Another import request changed this upload. Please retry.');
+  return json(state.summary || { received: state.received });
+}
 async function apiHandler(req, blobs, dispatch) {
   try {
     sameOrigin(req);
@@ -170,6 +213,7 @@ async function apiHandler(req, blobs, dispatch) {
       return json({ cloud: true, workspace: namespace(token).slice(0, 12), maxUploadMB: 4 }, 200, { 'Set-Cookie': cookie(token) });
     }
     if (!token) throw fail(401, 'Reload the page to open your private workspace.');
+    if (url.pathname === '/api/session/import' && req.method === 'POST') return await importBackup(req, blobs, token);
     if (url.pathname === '/api/session/recovery' && req.method === 'POST') {
       await blobs.set(namespace(token) + '/workspace', seal({}, token), { onlyIfNew: true });
       return json({ key: token });

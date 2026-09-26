@@ -10,6 +10,8 @@ The full app can run on a Netlify credit-based Free plan: build command `npm run
 
 Each browser gets a separate encrypted workspace, saved persistently in Netlify Blobs. Open Settings and save your **recovery key** to reopen your workspace on another device or after clearing cookies. Anyone with the key can access that workspace; there are no email/password accounts. Your existing local papers and API keys are never uploaded by deployment.
 
+To bring your local projects online, run `npm run workspace:export` in this folder. In the hosted app, open **Settings → Import local projects** and choose `.netlify/paperquest-projects-backup.json`. Import into an empty workspace. The backup includes projects, original papers, saved lessons and chats, notes, bookmarks, progress and XP; it excludes API keys and career/resume documents. Keep the backup private. Your local files remain unchanged.
+
 Hosted uploads are limited to **4 MB per file**, with **24 MB per workspace**. AI jobs run in the background; cached lessons remain free to reopen. Visitors use their own provider API keys, and provider charges are separate from hosting. Netlify Free has finite monthly credits and pauses sites at its limit. Custom AI endpoints require the site owner to enable their trusted HTTPS origin. See [hosting details](wiki/hosting.md).
 
 ## Requirements

@@ -11,7 +11,8 @@
     "build": "vite build",
     "start": "node server/index.js",
     "test": "node --test \"server/**/*.test.js\"",
-    "graph:knowledge": "node scripts/export-knowledge-graph.js"
+    "graph:knowledge": "node scripts/export-knowledge-graph.js",
+    "workspace:export": "node scripts/export-workspace.js"
   },
   "dependencies": {
     "@netlify/blobs": "^11.1.1",

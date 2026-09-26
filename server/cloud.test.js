@@ -25,6 +25,46 @@ function request(path, key, method = 'GET', body, extra = {}) {
 }
 const api = (blobs, req, dispatch = async () => {}) => cloud.apiHandler(req, blobs, dispatch);
 
+async function importFile(blobs, key, backup, mutate = (part) => part) {
+  const text = JSON.stringify(backup), id = crypto.randomBytes(16).toString('hex');
+  const send = (body) => api(blobs, request('/api/session/import', key, 'POST', { id, ...body }));
+  assert.equal((await send({ action: 'start', size: Buffer.byteLength(text), digest: crypto.createHash('sha256').update(text).digest('hex') })).status, 200);
+  const part = { action: 'part', index: 0, chunk: mutate(text) };
+  assert.equal((await send(part)).status, 200);
+  assert.equal((await send(part)).status, 200); // Retry does not append twice.
+  return send({ action: 'finish' });
+}
+const entry = (value) => ({ data: Buffer.from(JSON.stringify(value)).toString('base64'), mtime: 1 });
+const sampleBackup = () => ({ format: 'paperquest-projects-v1', files: {
+  'projects/old/project.json': entry({ id: 'old', name: 'Previous project', papers: [], nodes: [] }),
+  'projects/old/lessons/vectors.json': entry({ title: 'Saved lesson' }),
+  'profile.json': entry({ xp: 42 })
+} });
+
+test('backup import restores saved projects and lessons privately, with repeat-safe uploads', async () => {
+  const blobs = new MemoryBlobs(), key = token(), backup = sampleBackup();
+  const result = await importFile(blobs, key, backup);
+  assert.equal(result.status, 200, await result.clone().text());
+  assert.equal((await result.json()).lessons, 1);
+  const saved = cloud.unseal(await blobs.get(cloud.namespace(key) + '/workspace'), key);
+  assert.equal(saved['projects/old/lessons/vectors.json'].data, backup.files['projects/old/lessons/vectors.json'].data);
+  assert.equal((await (await api(blobs, request('/api/projects', key))).json())[0].name, 'Previous project');
+  assert.deepEqual(await (await api(blobs, request('/api/projects', token()))).json(), []);
+  assert.equal((await importFile(blobs, key, backup)).status, 200);
+});
+
+test('backup import rejects corruption, traversal, credentials and overwrites without altering projects', async () => {
+  const blobs = new MemoryBlobs(), key = token();
+  assert.equal((await importFile(blobs, key, sampleBackup(), (s) => s.replace('paperquest', 'xaperquest'))).status, 400);
+  for (const name of ['settings.json', 'projects/old/../../settings.json', 'projects/old/../project.json']) {
+    const backup = sampleBackup(); backup.files[name] = entry({ secret: 'excluded' });
+    assert.equal((await importFile(blobs, key, backup)).status, 400);
+  }
+  await api(blobs, request('/api/projects', key, 'POST', { name: 'Keep this' }));
+  assert.equal((await importFile(blobs, key, sampleBackup())).status, 409);
+  assert.equal((await (await api(blobs, request('/api/projects', key))).json())[0].name, 'Keep this');
+});
+
 test('cloud sessions reject cross-origin access and recover only an existing workspace', async () => {
   const blobs = new MemoryBlobs();
   assert.equal((await api(blobs, request('/api/projects'))).status, 401);

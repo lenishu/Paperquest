@@ -2,7 +2,11 @@
 
 `netlify.toml` builds the React client with `VITE_CLOUD=true` and publishes
 `client/dist`. Netlify runs `netlify/functions/api.mjs` at `/api/*` and
-`worker-background.mjs` for slow jobs. Use a credit-based Free plan (legacy Free
+`worker-background.mjs` for slow jobs. Explicit external dependencies include
+Express, Multer, serverless-http and PDF.js so the deployment package contains
+the modules required by the CommonJS server. The v2 entries load cloud.js with
+createRequire so the file tracer follows the original CommonJS requires; an
+ESM import had transformed them into untraceable bundled aliases. Use a credit-based Free plan (legacy Free
 plans do not include background functions). No paid database or hosted AI key
 is required. Visitors supply their own provider keys.
 
@@ -30,11 +34,31 @@ ETag writes. Concurrent edits to the same file return 409 rather than silently
 losing data. Temporary files are removed in `finally`. No success response is
 returned before persistence succeeds.
 
+## Importing local projects
+
+`npm run workspace:export` runs `scripts/export-workspace.js` and writes the
+gitignored `.netlify/paperquest-projects-backup.json`. `server/backup.js`
+validates the versioned file map, safe paths, base64, JSON, project metadata,
+file count and 24 MB decoded size. Only project files and mastery/profile/
+bookmarks are included; credentials and career/resume files are excluded.
+
+Settings > Import local projects sends 1 MB chunks to `/api/session/import`.
+One encrypted staging record per workspace expires logically after 30 minutes;
+a new upload replaces it. Ordered chunks are retry-safe and use ETag writes.
+Finish checks SHA-256, validates the whole backup, and atomically merges it into
+an empty workspace with conflict checks. Existing projects/progress cannot be
+overwritten; repeating an identical completed import is safe. Successful import
+replaces the staging payload with a small receipt. Incomplete uploads remain
+encrypted until replaced. Tests cover ownership, corruption, unsafe paths,
+credentials exclusion, retries, preservation and original saved lessons.
+
 ## Long operations
 
 AI calls, PDF/Markdown uploads, and reference lookups are queued in one encrypted
 job record per workspace. The normal API sends only the task ID and workspace
-cookie to the deployment's background worker. CAS claims prevent duplicate
+cookie to the background worker. Production uses `URL` (the public site), while
+previews use `DEPLOY_URL`; private deploy permalinks can otherwise reject the
+server-to-server request. CAS claims prevent duplicate
 execution on Netlify retries. `client/src/api.js` polls for the original API
 response with backoff. A cached lesson runs synchronously without AI.
 
@@ -69,3 +93,17 @@ No extra secrets are required for storage or sessions. Netlify automatically
 provides the Blobs credentials and deployment URL. Verify `/api/session`, an
 isolated demo project, reload persistence, upload, and a completed background
 task on the live site. Do not call a successful static build a full deployment.
+
+Production URL: https://paperquestapp.netlify.app/
+
+**Make the project public.** Credit-based teams created on or after 2026-07-28
+start new projects private. While private, every path (`/`, `/api/*`, assets)
+returns 401 with Netlify's "This site is private" sign-in page. After the first
+production deploy, press **Make public**, or open Project configuration >
+General > Visitor access > Project visibility and choose Public. If the team
+default is "Private for all projects", change it first under Team settings >
+General > Visitor access. `api.mjs` starts jobs by fetching the deploy's own
+`/.netlify/functions/worker-background`, and that request hits the same gate.
+On a private deploy, uploads, AI actions, and reference lookups fail with
+"Could not start the background worker", even for the signed-in owner. Production
+dispatch now uses the public site URL to support protected deploy previews.
